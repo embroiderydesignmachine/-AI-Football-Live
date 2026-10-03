@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>AI Football Live</title>
 <style>
-:root{--bg:#0b1020;--card:#151c31;--line:#2b3556;--text:#f7f8fc;--muted:#aab2c8;--blue:#2f63ff;--purple:#7b4df6}
+:root{--bg:#0b1020;--card:#151c31;--line:#2b3556;--text:#f7f8fc;--muted:#aab2c8;--blue:#2f63ff;--purple:#7b4df6;--green:#148b70;--red:#a43c50}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:linear-gradient(180deg,#09101d,#11192b);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
 body{overflow-x:hidden}.wrap{max-width:760px;margin:auto;padding:6px 8px 10px;min-height:100dvh}
@@ -18,6 +18,7 @@ body{overflow-x:hidden}.wrap{max-width:760px;margin:auto;padding:6px 8px 10px;mi
 .queues{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:5px}.queueBox{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:5px 7px;display:flex;align-items:center;justify-content:space-between;min-height:34px}.queueLeft{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:8px;font-weight:800}.queueNum{font-size:19px;font-weight:900;line-height:1;color:#fff}.queueJersey{width:25px!important;height:17px!important}
 .status{height:27px;margin-top:5px;background:#0d1425;border:1px solid var(--line);border-radius:9px;padding:5px 7px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;text-align:center}.note{text-align:center;color:var(--muted);font-size:7.5px;line-height:1.15;margin-top:4px}
 .jersey{width:45px;height:29px;position:relative;display:inline-block;clip-path:polygon(18% 0,37% 8%,63% 8%,82% 0,100% 22%,86% 40%,78% 30%,78% 90%,22% 90%,22% 30%,14% 40%,0 22%);border-radius:4px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}.jA{background:repeating-linear-gradient(90deg,#ffd21f 0 9px,#173f9b 9px 18px)}.jB{background:repeating-linear-gradient(90deg,#ffd21f 0 9px,#c91f2c 9px 18px)}.miniJersey{width:38px;height:25px}
+.admin{display:none;margin-top:6px;background:#10182b;border:1px solid #4a5a87;border-radius:11px;overflow:hidden}.admin.show{display:block}.adminHead{display:flex;align-items:center;justify-content:space-between;padding:7px 8px;background:#192441;font-size:11px;font-weight:900}.adminBadge{font-size:7px;background:#3659c9;border-radius:999px;padding:2px 5px}.adminBody{padding:7px}.adminStats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px}.adminStat{background:#0d1425;border:1px solid var(--line);border-radius:8px;padding:5px;text-align:center;color:var(--muted);font-size:7px}.adminStat strong{display:block;color:#fff;font-size:15px;margin-top:1px}.adminGrid{display:grid;grid-template-columns:1fr 1fr;gap:5px}.adminField label{display:block;color:var(--muted);font-size:7px;margin-bottom:2px}.adminField input{width:100%;border:1px solid var(--line);background:#0d1425;color:#fff;border-radius:7px;padding:6px;font-size:11px;font-weight:800}.adminActions{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px}.adminBtn{border:0;border-radius:8px;padding:8px 5px;color:#fff;font-size:9px;font-weight:900}.applyBtn{background:var(--green)}.resetBtn{background:var(--red)}.logoutBtn{margin-top:5px;width:100%;background:#26334f}
 @media(max-height:650px){.giftbtn{min-height:50px}.giftIcon,.giftFallback{width:19px;height:19px}.panel{padding:5px}.score{height:54px}.status{height:24px}.queueBox{min-height:30px;padding:4px 6px}.queueNum{font-size:17px}}
 </style>
 </head>
@@ -74,20 +75,104 @@ body{overflow-x:hidden}.wrap{max-width:760px;margin:auto;padding:6px 8px 10px;mi
 
   <div class="status" id="event">Hazır</div>
   <div class="note">Sonuçlar tanımlı oyun kurallarına göre belirlenir; rastgele değildir.</div>
+
+  <section class="admin" id="adminPanel">
+    <div class="adminHead"><span>ADMIN AYARLARI</span><span class="adminBadge">BU CİHAZ</span></div>
+    <div class="adminBody">
+      <div class="adminStats">
+        <div class="adminStat">SL KALECİ GÜCÜ<strong id="adminKeeperA">100</strong></div>
+        <div class="adminStat">SK KALECİ GÜCÜ<strong id="adminKeeperB">100</strong></div>
+        <div class="adminStat">SL BEKLEYEN<strong id="adminQueueA">0</strong></div>
+        <div class="adminStat">SK BEKLEYEN<strong id="adminQueueB">0</strong></div>
+      </div>
+      <div class="adminGrid">
+        <div class="adminField"><label>Başlangıç kaleci gücü</label><input id="setStartKeeper" type="number" value="100"></div>
+        <div class="adminField"><label>Şut başına kaleci kaybı</label><input id="setKeeperCost" type="number" value="10"></div>
+        <div class="adminField"><label>Şutlar arası süre (ms)</label><input id="setShotDelay" type="number" value="3000"></div>
+        <div class="adminField"><label>1 şut için kredi</label><input id="setShotThreshold" type="number" value="10"></div>
+      </div>
+      <div class="adminActions">
+        <button class="adminBtn applyBtn" onclick="applyAdminSettings()">AYARLARI UYGULA</button>
+        <button class="adminBtn resetBtn" onclick="resetMatch()">MAÇI SIFIRLA</button>
+      </div>
+      <button class="adminBtn logoutBtn" onclick="removeAdminDevice()">BU CİHAZDAN ADMİNİ KALDIR</button>
+    </div>
+  </section>
 </div>
 <script>
-const state={shotThreshold:10,startKeeper:100,keeperCost:10,shotDelay:3000,A:{credit:0,score:0},B:{credit:0,score:0},keeper:{A:100,B:100},busy:false,lastTeam:'B'};
+const STORAGE_KEY='aiFootballLiveStateV2';
+const ADMIN_KEY='aiFootballAdminDeviceV1';
+const ADMIN_TOKEN='edm2026';
+const defaults={shotThreshold:10,startKeeper:100,keeperCost:10,shotDelay:3000,A:{credit:0,score:0},B:{credit:0,score:0},keeper:{A:100,B:100},busy:false,lastTeam:'B'};
+let state=loadState();
 const $=id=>document.getElementById(id);const nameOf=t=>t==='A'?'Sarı-Lacivert':'Sarı-Kırmızı';
+
+function activateAdminFromUrl(){
+  const u=new URL(location.href);
+  if(u.searchParams.get('admin')===ADMIN_TOKEN){localStorage.setItem(ADMIN_KEY,'1');u.searchParams.delete('admin');history.replaceState({},'',u.pathname+u.search+u.hash)}
+}
+function isAdmin(){return localStorage.getItem(ADMIN_KEY)==='1'}
+function loadState(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(!saved)return JSON.parse(JSON.stringify(defaults));
+    return {...JSON.parse(JSON.stringify(defaults)),...saved,A:{...defaults.A,...saved.A},B:{...defaults.B,...saved.B},keeper:{...defaults.keeper,...saved.keeper},busy:false};
+  }catch(e){return JSON.parse(JSON.stringify(defaults))}
+}
+function saveState(){
+  const copy={shotThreshold:state.shotThreshold,startKeeper:state.startKeeper,keeperCost:state.keeperCost,shotDelay:state.shotDelay,A:state.A,B:state.B,keeper:state.keeper,lastTeam:state.lastTeam};
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(copy));
+}
 function giftFail(img){img.style.display='none';const f=img.nextElementSibling;if(f&&f.classList.contains('giftFallback'))f.style.display='flex'}
 function readyShots(t){return Math.floor(state[t].credit/state.shotThreshold)}
-function render(){$('scoreA').textContent=state.A.score;$('scoreB').textContent=state.B.score;$('queueA').textContent=readyShots('A');$('queueB').textContent=readyShots('B')}
+function render(){
+  $('scoreA').textContent=state.A.score;$('scoreB').textContent=state.B.score;$('queueA').textContent=readyShots('A');$('queueB').textContent=readyShots('B');
+  const panel=$('adminPanel');
+  if(isAdmin()){
+    panel.classList.add('show');
+    $('adminKeeperA').textContent=state.keeper.A;$('adminKeeperB').textContent=state.keeper.B;$('adminQueueA').textContent=readyShots('A');$('adminQueueB').textContent=readyShots('B');
+    $('setStartKeeper').value=state.startKeeper;$('setKeeperCost').value=state.keeperCost;$('setShotDelay').value=state.shotDelay;$('setShotThreshold').value=state.shotThreshold;
+  }else panel.classList.remove('show');
+}
 function log(msg){$('event').textContent=msg}
-function addShots(t,n){state[t].credit+=n*state.shotThreshold;log(nameOf(t)+' için '+n+' şut eklendi');render();processQueue()}
-function addKeeper(t,n){state.keeper[t]+=n;log('Kaleci savunması güçlendirildi');render()}
+function addShots(t,n){state[t].credit+=n*state.shotThreshold;saveState();log(nameOf(t)+' için '+n+' şut eklendi');render();processQueue()}
+function addKeeper(t,n){state.keeper[t]+=n;saveState();log('Kaleci savunması güçlendirildi');render()}
 function chooseTeam(){const a=readyShots('A')>0,b=readyShots('B')>0;if(a&&b)return state.lastTeam==='A'?'B':'A';if(a)return'A';if(b)return'B';return null}
-async function processQueue(){if(state.busy)return;state.busy=true;while(true){const t=chooseTeam();if(!t)break;state[t].credit-=state.shotThreshold;state.lastTeam=t;render();await resolveShot(t);await new Promise(r=>setTimeout(r,state.shotDelay))}state.busy=false}
-async function resolveShot(t){const before=state.keeper[t];log('⚽ '+nameOf(t)+' şut çekiyor!');await new Promise(r=>setTimeout(r,700));if(before<=0){state[t].score++;state.keeper[t]=state.startKeeper;log('🥅 GOL! '+nameOf(t))}else{state.keeper[t]=Math.max(0,before-state.keeperCost);log('🧤 Kaleci kurtardı!')}render()}
-render();
+async function processQueue(){
+  if(state.busy)return;state.busy=true;
+  while(true){
+    const t=chooseTeam();if(!t)break;
+    state[t].credit-=state.shotThreshold;state.lastTeam=t;render();
+    await resolveShot(t);saveState();
+    await new Promise(r=>setTimeout(r,state.shotDelay));
+  }
+  state.busy=false;saveState();render();
+}
+async function resolveShot(t){
+  const before=state.keeper[t];log('⚽ '+nameOf(t)+' şut çekiyor!');await new Promise(r=>setTimeout(r,700));
+  if(before<=0){state[t].score++;state.keeper[t]=state.startKeeper;log('🥅 GOL! '+nameOf(t))}
+  else{state.keeper[t]=Math.max(0,before-state.keeperCost);log('🧤 Kaleci kurtardı!')}
+  render();
+}
+function applyAdminSettings(){
+  if(!isAdmin())return;
+  state.startKeeper=Math.max(1,Number($('setStartKeeper').value)||100);
+  state.keeperCost=Math.max(1,Number($('setKeeperCost').value)||10);
+  state.shotDelay=Math.max(500,Number($('setShotDelay').value)||3000);
+  state.shotThreshold=Math.max(1,Number($('setShotThreshold').value)||10);
+  saveState();render();log('Admin ayarları uygulandı');processQueue();
+}
+function resetMatch(){
+  if(!isAdmin())return;
+  if(!confirm('Maç tamamen sıfırlansın mı? Skorlar, bekleyen şutlar ve kaleci güçleri başlangıca dönecek.'))return;
+  state={shotThreshold:state.shotThreshold,startKeeper:state.startKeeper,keeperCost:state.keeperCost,shotDelay:state.shotDelay,A:{credit:0,score:0},B:{credit:0,score:0},keeper:{A:state.startKeeper,B:state.startKeeper},busy:false,lastTeam:'B'};
+  saveState();render();log('🔄 Maç admin tarafından sıfırlandı');
+}
+function removeAdminDevice(){
+  if(!confirm('Bu telefondaki admin görünümü kapatılsın mı?'))return;
+  localStorage.removeItem(ADMIN_KEY);render();log('Admin görünümü bu cihazdan kaldırıldı');
+}
+activateAdminFromUrl();render();if(readyShots('A')>0||readyShots('B')>0)processQueue();
 </script>
 </body>
 </html>
