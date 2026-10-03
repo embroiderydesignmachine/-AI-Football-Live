@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>AI Football Live - Mobil Prototip</title>
+<style>
+  :root{
+    --bg:#0b1020; --card:#141b2f; --card2:#1c2540; --text:#f6f7fb; --muted:#aab2c8;
+    --good:#42d392; --warn:#ffd166; --bad:#ff6b6b; --line:#2b3556;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#09101d,#11192b);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:760px;margin:0 auto;padding:14px 12px 40px}
+  h1{font-size:22px;margin:4px 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:12px}
+  .scoreboard{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:12px;margin-bottom:12px}
+  .team{text-align:center}.team-name{font-weight:800;font-size:16px}.score{font-size:36px;font-weight:900;line-height:1}.vs{color:var(--muted);font-weight:800}
+  .grid{display:grid;grid-template-columns:1fr;gap:10px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}.card h2{font-size:16px;margin:0 0 10px}
+  .row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin:8px 0}.label{color:var(--muted);font-size:13px}.value{font-weight:800}
+  .bar{height:11px;background:#0d1425;border-radius:999px;overflow:hidden;border:1px solid #25304d}.fill{height:100%;width:50%;background:linear-gradient(90deg,#6ea8fe,#42d392);transition:width .25s}.keeper .fill{background:linear-gradient(90deg,#ffd166,#ff9f43)}
+  .controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  button{border:0;border-radius:13px;padding:12px 8px;background:var(--card2);color:var(--text);font-weight:800;font-size:14px;min-height:46px}button:active{transform:scale(.98)}
+  .primary{background:#2457ff}.def{background:#7a4df5}.power{background:#127c68}.danger{background:#9d3141}
+  .event{margin-top:12px;background:#0d1425;border:1px solid var(--line);border-radius:14px;padding:12px;min-height:74px;font-weight:700}.event small{display:block;color:var(--muted);font-weight:500;margin-top:4px}
+  .rules{font-size:12px;color:var(--muted);line-height:1.45}.settings{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0d1425;color:var(--text);font-weight:700}.setting label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+  @media(min-width:680px){.grid{grid-template-columns:1fr 1fr}.keeper{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AI Football Live</h1>
+  <div class="sub">Telefon prototipi • Şimdilik gerçek TikTok bağlantısı yok</div>
+  <div class="scoreboard">
+    <div class="team"><div class="team-name">Sarı-Lacivert</div><div class="score" id="scoreA">0</div></div>
+    <div class="vs">VS</div>
+    <div class="team"><div class="team-name">Sarı-Kırmızı</div><div class="score" id="scoreB">0</div></div>
+  </div>
+  <div class="grid">
+    <section class="card">
+      <h2>⚽ Sarı-Lacivert Futbolcu</h2>
+      <div class="row"><span class="label">Güç</span><span class="value" id="powerATxt">100</span></div><div class="bar"><div class="fill" id="powerABar"></div></div>
+      <div class="row"><span class="label">Moral</span><span class="value" id="moraleATxt">0</span></div><div class="row"><span class="label">Bekleyen şut</span><span class="value" id="queueATxt">0</span></div>
+      <div class="controls">
+        <button class="primary" onclick="addShots('A',1)">🌹 +1 Şut</button><button class="primary" onclick="addShots('A',5)">🍎 +5 Şut</button><button class="primary" onclick="addShots('A',10)">❤️ +10 Şut</button>
+        <button class="power" onclick="addPower('A',10)">+10 Güç</button><button class="def" onclick="addKeeper('A',10)">Kaleci +10</button><button onclick="shootNow('A')">Şimdi Şut</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>⚽ Sarı-Kırmızı Futbolcu</h2>
+      <div class="row"><span class="label">Güç</span><span class="value" id="powerBTxt">100</span></div><div class="bar"><div class="fill" id="powerBBar"></div></div>
+      <div class="row"><span class="label">Moral</span><span class="value" id="moraleBTxt">0</span></div><div class="row"><span class="label">Bekleyen şut</span><span class="value" id="queueBTxt">0</span></div>
+      <div class="controls">
+        <button class="primary" onclick="addShots('B',1)">🌹 +1 Şut</button><button class="primary" onclick="addShots('B',5)">🍎 +5 Şut</button><button class="primary" onclick="addShots('B',10)">❤️ +10 Şut</button>
+        <button class="power" onclick="addPower('B',10)">+10 Güç</button><button class="def" onclick="addKeeper('B',10)">Kaleci +10</button><button onclick="shootNow('B')">Şimdi Şut</button>
+      </div>
+    </section>
+    <section class="card keeper">
+      <h2>🧤 Bağımsız Kaleci</h2>
+      <div class="row"><span class="label">Sarı-Lacivert'e karşı savunma</span><span class="value" id="keeperATxt">100</span></div><div class="bar"><div class="fill" id="keeperABar"></div></div>
+      <div class="row"><span class="label">Moral (Sarı-Lacivert'e karşı)</span><span class="value" id="keeperMoraleATxt">0</span></div>
+      <div class="row" style="margin-top:14px"><span class="label">Sarı-Kırmızı'ya karşı savunma</span><span class="value" id="keeperBTxt">100</span></div><div class="bar"><div class="fill" id="keeperBBar"></div></div>
+      <div class="row"><span class="label">Moral (Sarı-Kırmızı'ya karşı)</span><span class="value" id="keeperMoraleBTxt">0</span></div>
+    </section>
+  </div>
+  <div class="event" id="eventBox">Hazır.<small>Hediye butonlarına basarak deneme yap.</small></div>
+  <section class="card" style="margin-top:12px">
+    <h2>⚙️ Test Ayarları</h2>
+    <div class="settings">
+      <div class="setting"><label>Başlangıç gücü</label><input id="startPower" type="number" value="100"></div><div class="setting"><label>Şut başına futbolcu kaybı</label><input id="playerCost" type="number" value="10"></div>
+      <div class="setting"><label>Şut başına kaleci kaybı</label><input id="keeperCost" type="number" value="12"></div><div class="setting"><label>Moral sınırı ±</label><input id="moraleLimit" type="number" value="20"></div>
+      <div class="setting"><label>Gol atan moral +</label><input id="goalMorale" type="number" value="5"></div><div class="setting"><label>Kurtarış moral +</label><input id="saveMorale" type="number" value="3"></div>
+      <div class="setting"><label>Gol yiyen kaleci moral -</label><input id="concedeMorale" type="number" value="5"></div><div class="setting"><label>Otomatik şut aralığı (ms)</label><input id="shotDelay" type="number" value="1800"></div>
+    </div>
+    <div class="controls" style="grid-template-columns:1fr 1fr;margin-top:12px"><button onclick="applySettings()">Ayarları Uygula</button><button class="danger" onclick="resetGame()">Maçı Sıfırla</button></div>
+    <p class="rules">Şimdilik sonuç rastgele değildir. Etkili futbolcu gücü = ana güç + moral; etkili kaleci gücü = ilgili takıma karşı savunma + moral. Futbolcu daha güçlüyse gol, değilse kurtarış olur. Kaleci savunması 0 ise o takımdan gelen sonraki geçerli şut gol olur ve golden sonra o takıma karşı savunma başlangıç değerine döner. Futbolcu gücü 0 ise güç hediyesi gelene kadar şut çekemez.</p>
+  </section>
+</div>
+<script>
+const state={startPower:100,playerCost:10,keeperCost:12,moraleLimit:20,goalMorale:5,saveMorale:3,concedeMorale:5,shotDelay:1800,A:{power:100,morale:0,queue:0,score:0},B:{power:100,morale:0,queue:0,score:0},keeper:{A:100,B:100,moraleA:0,moraleB:0},busy:false,lastTeam:'B'};
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));const $=id=>document.getElementById(id);function nameOf(t){return t==='A'?'Sarı-Lacivert':'Sarı-Kırmızı';}
+function render(){['A','B'].forEach(t=>{$('power'+t+'Txt').textContent=state[t].power;$('morale'+t+'Txt').textContent=(state[t].morale>0?'+':'')+state[t].morale;$('queue'+t+'Txt').textContent=state[t].queue;$('power'+t+'Bar').style.width=Math.min(100,(state[t].power/state.startPower)*100)+'%';$('score'+t).textContent=state[t].score;$('keeper'+t+'Txt').textContent=state.keeper[t];$('keeper'+t+'Bar').style.width=Math.min(100,(state.keeper[t]/state.startPower)*100)+'%';$('keeperMorale'+t+'Txt').textContent=(state.keeper['morale'+t]>0?'+':'')+state.keeper['morale'+t];});}
+function log(msg,sub=''){$('eventBox').innerHTML=msg+(sub?'<small>'+sub+'</small>':'');}
+function addShots(t,n){state[t].queue+=n;log('🎁 '+nameOf(t)+' +'+n+' şut kazandı.','Şutlar sıraya eklendi.');render();processQueue();}
+function addPower(t,n){state[t].power+=n;log('💪 '+nameOf(t)+' futbolcu +'+n+' güç aldı.');render();processQueue();}
+function addKeeper(t,n){state.keeper[t]+=n;log('🧤 Kaleci '+nameOf(t)+"'e karşı +"+n+' savunma aldı.');render();}
+function chooseQueuedTeam(){const a=state.A.queue>0&&state.A.power>0;const b=state.B.queue>0&&state.B.power>0;if(a&&b)return state.lastTeam==='A'?'B':'A';if(a)return'A';if(b)return'B';return null;}
+async function processQueue(){if(state.busy)return;state.busy=true;while(true){const t=chooseQueuedTeam();if(!t)break;state[t].queue--;state.lastTeam=t;render();await resolveShot(t);await new Promise(r=>setTimeout(r,state.shotDelay));}state.busy=false;}
+async function shootNow(t){if(state[t].power<=0){log('⛔ '+nameOf(t)+' futbolcu yorgun.','Yeni güç hediyesi gelene kadar şut çekemez.');return;}if(state.busy){state[t].queue++;render();return;}state.busy=true;await resolveShot(t);state.busy=false;processQueue();}
+async function resolveShot(t){const p=state[t];const km='morale'+t;if(p.power<=0){log('⛔ '+nameOf(t)+' futbolcu yorgun.');return;}const keeperWasZero=state.keeper[t]<=0;const attackEff=p.power+p.morale;const keeperEff=state.keeper[t]+state.keeper[km];log('⚽ '+nameOf(t)+' ŞUT ÇEKİYOR!','Futbolcu '+attackEff+' güç • Kaleci '+keeperEff+' savunma');await new Promise(r=>setTimeout(r,500));p.power=Math.max(0,p.power-state.playerCost);state.keeper[t]=Math.max(0,state.keeper[t]-state.keeperCost);const goal=keeperWasZero||attackEff>keeperEff;if(goal){p.score++;p.morale=clamp(p.morale+state.goalMorale,-state.moraleLimit,state.moraleLimit);state.keeper[km]=clamp(state.keeper[km]-state.concedeMorale,-state.moraleLimit,state.moraleLimit);log('🥅 GOL! '+nameOf(t)+' ⚽','Futbolcu moral +'+state.goalMorale+' • Kaleci moral -'+state.concedeMorale);if(keeperWasZero){state.keeper[t]=state.startPower;log('🥅 GOL! '+nameOf(t)+' ⚽',"Kalecinin "+nameOf(t)+"'e karşı savunması "+state.startPower+"'e yenilendi.");}}else{state.keeper[km]=clamp(state.keeper[km]+state.saveMorale,-state.moraleLimit,state.moraleLimit);log('🧤 KURTARDI!','Kaleci moral +'+state.saveMorale);}if(p.power===0&&p.queue>0){log('😮‍💨 '+nameOf(t)+' futbolcu 0 güce düştü.','Bekleyen '+p.queue+' şut, yeni güç hediyesi gelene kadar duracak.');}render();}
+function applySettings(){state.startPower=Math.max(1,+$('startPower').value||100);state.playerCost=Math.max(0,+$('playerCost').value||0);state.keeperCost=Math.max(0,+$('keeperCost').value||0);state.moraleLimit=Math.max(0,+$('moraleLimit').value||0);state.goalMorale=Math.max(0,+$('goalMorale').value||0);state.saveMorale=Math.max(0,+$('saveMorale').value||0);state.concedeMorale=Math.max(0,+$('concedeMorale').value||0);state.shotDelay=Math.max(250,+$('shotDelay').value||1800);log('✅ Ayarlar uygulandı.');render();}
+function resetGame(){applySettings();state.A={power:state.startPower,morale:0,queue:0,score:0};state.B={power:state.startPower,morale:0,queue:0,score:0};state.keeper={A:state.startPower,B:state.startPower,moraleA:0,moraleB:0};state.busy=false;state.lastTeam='B';log('🔄 Maç sıfırlandı.','Yeni deneme hazır.');render();}
+render();
+</script>
+</body>
+</html>
