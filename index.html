@@ -19,7 +19,7 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="head"><div class="title">AI Football Live</div><div class="headRight"><div class="sub">TikTok hediye test ekranı</div><button id="adminOpen" class="adminOpen" onclick="openAdmin()">⚙️ ADMIN</button></div></div>
+  <div class="head"><div class="title">AI Football Live</div><div class="headRight"><div class="sub" id="connectionStatus">Supabase bağlanıyor...</div><button id="adminOpen" class="adminOpen" onclick="openAdmin()">⚙️ ADMIN</button></div></div>
   <div class="score"><div class="scoreTeam"><span class="jersey miniJersey jA"></span><div class="num" id="scoreA">0</div></div><div class="vs">VS</div><div class="scoreTeam"><span class="jersey miniJersey jB"></span><div class="num" id="scoreB">0</div></div></div>
 
   <section class="panel"><div class="panelHead"><span class="jersey jA"></span><span>SARI-LACİVERT</span></div><div class="sectionLabel">ŞUT HEDİYELERİ</div><div class="buttons">
@@ -54,12 +54,17 @@
   <div class="adminActions"><button class="adminBtn applyBtn" onclick="applyAdminSettings()">AYARLARI UYGULA</button><button class="adminBtn resetBtn" onclick="resetMatch()">MAÇI SIFIRLA</button></div><button class="adminBtn logoutBtn" onclick="removeAdminDevice()">BU CİHAZDAN ADMİNİ KALDIR</button>
 </div></section></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SUPABASE_URL='https://xozzbaguihyhruloiqjm.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_Oftm7DRbr0Vdt9gTLFGAaw_LQq4PCnP';
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const STORAGE_KEY='aiFootballLiveStateV3',ADMIN_KEY='aiFootballAdminDeviceV2',ADMIN_TOKEN='edm2026';
 const defaults={shotThreshold:10,startKeeper:100,keeperCost:10,shotDelay:3000,A:{credit:0,score:0},B:{credit:0,score:0},keeper:{A:100,B:100},busy:false,lastTeam:'B'};
 const params=new URLSearchParams(location.search);
 if(params.get('admin')===ADMIN_TOKEN){try{localStorage.setItem(ADMIN_KEY,'1')}catch(e){}try{sessionStorage.setItem(ADMIN_KEY,'1')}catch(e){}}
 const $=id=>document.getElementById(id),nameOf=t=>t==='A'?'Sarı-Lacivert':'Sarı-Kırmızı';
+async function testSupabaseConnection(){const s=$('connectionStatus');try{const {error}=await db.from('games').select('id').limit(1);if(error)throw error;if(s)s.textContent='Supabase bağlı'}catch(e){if(s)s.textContent='Supabase bağlantı hatası';console.error('Supabase connection test failed:',e)}}
 function isAdmin(){try{return params.get('admin')===ADMIN_TOKEN||localStorage.getItem(ADMIN_KEY)==='1'||sessionStorage.getItem(ADMIN_KEY)==='1'}catch(e){return params.get('admin')===ADMIN_TOKEN}}
 function clone(x){return JSON.parse(JSON.stringify(x))}
 function loadState(){try{const s=JSON.parse(localStorage.getItem(STORAGE_KEY));if(!s)return clone(defaults);return {...clone(defaults),...s,A:{...defaults.A,...s.A},B:{...defaults.B,...s.B},keeper:{...defaults.keeper,...s.keeper},busy:false}}catch(e){return clone(defaults)}}
@@ -79,6 +84,6 @@ async function resolveShot(t){const before=state.keeper[t];log('⚽ '+nameOf(t)+
 function applyAdminSettings(){if(!isAdmin())return;state.startKeeper=Math.max(1,+$('setStartKeeper').value||100);state.keeperCost=Math.max(1,+$('setKeeperCost').value||10);state.shotDelay=Math.max(500,+$('setShotDelay').value||3000);state.shotThreshold=Math.max(1,+$('setShotThreshold').value||10);saveState();render();log('Admin ayarları uygulandı');closeAdmin();processQueue()}
 function resetMatch(){if(!isAdmin())return;if(!confirm('Maç tamamen sıfırlansın mı?'))return;state={shotThreshold:state.shotThreshold,startKeeper:state.startKeeper,keeperCost:state.keeperCost,shotDelay:state.shotDelay,A:{credit:0,score:0},B:{credit:0,score:0},keeper:{A:state.startKeeper,B:state.startKeeper},busy:false,lastTeam:'B'};saveState();render();log('🔄 Maç admin tarafından sıfırlandı');closeAdmin()}
 function removeAdminDevice(){if(!confirm('Bu telefondaki admin görünümü kapatılsın mı?'))return;try{localStorage.removeItem(ADMIN_KEY);sessionStorage.removeItem(ADMIN_KEY)}catch(e){}location.href=location.pathname}
-render();if(isAdmin())log('✅ Admin modu aktif');if(readyShots('A')||readyShots('B'))processQueue();
+render();testSupabaseConnection();if(isAdmin())log('✅ Admin modu aktif');if(readyShots('A')||readyShots('B'))processQueue();
 </script>
 </body></html>
