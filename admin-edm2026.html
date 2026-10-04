@@ -5,14 +5,31 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AI Football Live Admin</title>
 <style>
-html,body{margin:0;height:100%;background:#0b1020;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.wrap{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}.box{background:#151c31;border:1px solid #2b3556;border-radius:14px;padding:22px;max-width:360px;width:100%}h1{font-size:20px;margin:0 0 8px}p{font-size:13px;color:#aab2c8;margin:0}
+html,body{margin:0;height:100%;background:#0b1020;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}.box{background:#151c31;border:1px solid #2b3556;border-radius:14px;padding:22px;max-width:360px;width:100%;box-sizing:border-box}h1{font-size:20px;margin:0 0 8px;text-align:center}p{font-size:13px;color:#aab2c8;margin:0 0 16px;text-align:center}.field{margin:10px 0}.field label{display:block;font-size:12px;color:#aab2c8;margin-bottom:5px}.field input{width:100%;box-sizing:border-box;border:1px solid #2b3556;background:#0d1425;color:#fff;border-radius:9px;padding:11px 12px;font-size:15px}.btn{width:100%;border:0;border-radius:9px;padding:11px 12px;background:#148b70;color:#fff;font-weight:800;font-size:14px;margin-top:8px}.btn:disabled{opacity:.6}.msg{min-height:20px;font-size:12px;text-align:center;margin-top:12px;color:#ffb4b4}.ok{color:#8be0c5}
 </style>
 </head>
 <body>
-<div class="wrap"><div class="box"><h1>Admin modu açılıyor…</h1><p>Bu tarayıcı admin cihazı olarak kaydediliyor.</p></div></div>
+<div class="wrap"><div class="box">
+<h1>AI Football Live Admin</h1>
+<p>Supabase admin hesabınla giriş yap.</p>
+<form id="loginForm">
+<div class="field"><label for="email">E-posta</label><input id="email" type="email" autocomplete="username" required></div>
+<div class="field"><label for="password">Şifre</label><input id="password" type="password" autocomplete="current-password" required></div>
+<button id="loginBtn" class="btn" type="submit">Giriş yap</button>
+<div id="msg" class="msg"></div>
+</form>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-try{localStorage.setItem('aiFootballAdminDeviceV2','1');sessionStorage.setItem('aiFootballAdminDeviceV2','1')}catch(e){}
-setTimeout(function(){location.replace('./?v=5')},250);
+const SUPABASE_URL='https://xozzbaguihyhruloiqjm.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_Oftm7DRbr0Vdt9gTLFGAaw_LQq4PCnP';
+const ADMIN_UID='6893f884-6b91-4224-abaa-43f87df0966f';
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+const form=document.getElementById('loginForm'),btn=document.getElementById('loginBtn'),msg=document.getElementById('msg');
+function show(text,ok=false){msg.textContent=text;msg.className='msg'+(ok?' ok':'')}
+async function finishIfAdmin(user){if(!user||user.id!==ADMIN_UID)return false;try{localStorage.setItem('aiFootballAdminDeviceV2','1');sessionStorage.setItem('aiFootballAdminDeviceV2','1')}catch(e){}show('Giriş başarılı. Oyun açılıyor…',true);setTimeout(()=>location.replace('./?v=7'),350);return true}
+(async()=>{const {data}=await db.auth.getUser();if(data&&data.user)await finishIfAdmin(data.user)})();
+form.addEventListener('submit',async e=>{e.preventDefault();btn.disabled=true;show('Giriş yapılıyor…');const email=document.getElementById('email').value.trim();const password=document.getElementById('password').value;const {data,error}=await db.auth.signInWithPassword({email,password});if(error){show('Giriş başarısız: e-posta veya şifreyi kontrol et.');btn.disabled=false;return}if(!data.user||data.user.id!==ADMIN_UID){await db.auth.signOut();show('Bu hesap admin olarak yetkili değil.');btn.disabled=false;return}await finishIfAdmin(data.user)});
 </script>
 </body>
 </html>
