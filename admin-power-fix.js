@@ -3,6 +3,28 @@
 const byId=id=>document.getElementById(id);
 let installed=false;
 
+function readNumber(id,fallback,min=0){
+  const el=byId(id);
+  const raw=el?String(el.value).trim():'';
+  if(raw==='')return fallback;
+  const n=Number(raw);
+  return Number.isFinite(n)?Math.max(min,n):fallback;
+}
+
+function installZeroSafeRules(){
+  if(typeof window.applyRules!=='function')return;
+  window.applyRules=function(r){
+    gameRules=r||{};
+    const startRaw=gameRules.goalkeeper_initial_power ?? gameRules.start_keeper ?? 100;
+    state.startKeeper=Number.isFinite(Number(startRaw))?Number(startRaw):100;
+    state.keeperCost=Number.isFinite(Number(gameRules.keeper_cost))?Number(gameRules.keeper_cost):10;
+    state.shotDelay=Number.isFinite(Number(gameRules.shot_delay))?Number(gameRules.shot_delay):3000;
+    state.shotThreshold=Number.isFinite(Number(gameRules.shot_threshold))?Number(gameRules.shot_threshold):10;
+    state.lastTeam=gameRules.last_team||state.lastTeam;
+    if(typeof render==='function')render();
+  };
+}
+
 async function saveAdminSettings(ev){
   if(ev){ev.preventDefault();ev.stopPropagation();}
   const btn=document.querySelector('.applyBtn');
@@ -13,10 +35,10 @@ async function saveAdminSettings(ev){
   try{
     if(typeof db==='undefined'||typeof ids==='undefined'||!ids.game)throw new Error('Maç bağlantısı hazır değil');
 
-    const start=Math.max(1,Number(byId('setStartKeeper')?.value)||100);
-    const cost=Math.max(1,Number(byId('setKeeperCost')?.value)||10);
-    const delay=Math.max(500,Number(byId('setShotDelay')?.value)||3000);
-    const threshold=Math.max(1,Number(byId('setShotThreshold')?.value)||10);
+    const start=readNumber('setStartKeeper',100,0);
+    const cost=readNumber('setKeeperCost',10,0);
+    const delay=readNumber('setShotDelay',3000,0);
+    const threshold=readNumber('setShotThreshold',10,0);
     const rules={...(typeof gameRules!=='undefined'&&gameRules?gameRules:{}),goalkeeper_initial_power:start,start_keeper:start,keeper_cost:cost,shot_delay:delay,shot_threshold:threshold,last_team:(typeof state!=='undefined'?state.lastTeam:'B')};
 
     const gameRes=await db.from('games').update({rules}).eq('id',ids.game).select('id,rules');
@@ -41,7 +63,7 @@ async function saveAdminSettings(ev){
     }
     if(typeof render==='function')render();
     if(typeof loadRemote==='function')await loadRemote(true);
-    if(typeof log==='function')log('Ayarlar kaydedildi • Kaleci gücü '+start);
+    if(typeof log==='function')log('Ayarlar kaydedildi');
 
     btn.textContent='KAYDEDİLDİ';
     setTimeout(()=>{btn.textContent=oldText;btn.disabled=false;},1200);
@@ -59,7 +81,9 @@ function install(){
   const btn=document.querySelector('.applyBtn');
   if(!btn){setTimeout(install,250);return;}
   installed=true;
+  installZeroSafeRules();
   btn.onclick=saveAdminSettings;
+  if(typeof loadRemote==='function')setTimeout(()=>loadRemote(true),50);
 }
 
 install();
