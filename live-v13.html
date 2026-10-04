@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>AI Football Live</title>
+<style>
+html,body{margin:0;width:100%;height:100%;background:#09101d;overflow:hidden}iframe{display:block;width:100vw;height:100dvh;border:0;background:#09101d}
+</style>
+</head>
+<body>
+<iframe id="gameFrame" src="./live.html?v=12" allow="autoplay"></iframe>
+<script>
+const frame=document.getElementById('gameFrame');
+let lastSpokenAt=0;
+function getTurkishVoice(){
+  if(!('speechSynthesis' in window))return null;
+  const voices=window.speechSynthesis.getVoices();
+  return voices.find(v=>/^tr(-|_)?/i.test(v.lang))||voices.find(v=>/turk/i.test(v.name))||null;
+}
+function unlockSpeech(){
+  try{
+    if(!('speechSynthesis' in window))return;
+    const u=new SpeechSynthesisUtterance('');
+    u.volume=0;
+    window.speechSynthesis.speak(u);
+    window.speechSynthesis.cancel();
+  }catch(e){}
+}
+function shoutGoal(){
+  try{
+    const now=Date.now();
+    if(now-lastSpokenAt<1200||!('speechSynthesis' in window))return;
+    lastSpokenAt=now;
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance('Gooooooooool!');
+    u.lang='tr-TR';
+    u.rate=0.72;
+    u.pitch=0.82;
+    u.volume=1;
+    const v=getTurkishVoice();
+    if(v)u.voice=v;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+function attach(){
+  try{
+    const doc=frame.contentDocument;
+    if(!doc)return;
+    doc.addEventListener('pointerdown',unlockSpeech,{passive:true});
+    doc.addEventListener('touchstart',unlockSpeech,{passive:true});
+    const eventEl=doc.getElementById('event');
+    if(!eventEl)return;
+    let previous=eventEl.textContent.trim();
+    const observer=new MutationObserver(()=>{
+      const current=eventEl.textContent.trim();
+      if(current!==previous){
+        previous=current;
+        if(/^GOL!/i.test(current))shoutGoal();
+      }
+    });
+    observer.observe(eventEl,{childList:true,characterData:true,subtree:true});
+  }catch(e){console.error(e)}
+}
+frame.addEventListener('load',attach);
+if('speechSynthesis' in window){window.speechSynthesis.onvoiceschanged=()=>getTurkishVoice()}
+</script>
+</body>
+</html>
