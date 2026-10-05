@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-let ctx=null,master=null,teamTimer=null,currentTeam=null,enabled=false,lastGoalAt=0;
+let ctx=null,master=null,teamTimer=null,currentTeam=null,enabled=false,lastGoalAt=0,nativeGoalSound=null;
 const $=id=>document.getElementById(id);
 
 function ensureButton(){
@@ -15,13 +15,24 @@ function ensureButton(){
   return b;
 }
 
+function patchNativeGoalSound(){
+  if(nativeGoalSound||typeof window.playGoalSound!=='function')return;
+  nativeGoalSound=window.playGoalSound;
+  window.playGoalSound=function(){
+    if(!enabled)return;
+    return nativeGoalSound.apply(this,arguments);
+  };
+}
+
 async function enableSound(){
   try{
+    patchNativeGoalSound();
     if(!ctx)ctx=new(window.AudioContext||window.webkitAudioContext)();
     if(ctx.state==='suspended')await ctx.resume();
     if(!master){master=ctx.createGain();master.gain.value=.72;master.connect(ctx.destination)}
     master.gain.value=.72;
     enabled=true;
+    window.__aiFootballSoundEnabled=true;
     const b=ensureButton();
     b.textContent='SESİ KAPAT';
     b.style.background='#8e2f44';
@@ -30,8 +41,10 @@ async function enableSound(){
 
 function disableSound(){
   enabled=false;
+  window.__aiFootballSoundEnabled=false;
   stopTeamMusic();
   try{if(master)master.gain.value=0}catch(e){}
+  try{if(ctx&&ctx.state==='running')ctx.suspend()}catch(e){}
   try{if('speechSynthesis' in window)speechSynthesis.cancel()}catch(e){}
   const b=ensureButton();
   b.textContent='SESİ AÇ';
@@ -97,7 +110,12 @@ function bind(){
     new MutationObserver(()=>{const n=Number(qb.textContent)||0;if(n<b)startTeamMusic('B');b=n}).observe(qb,{childList:true,characterData:true,subtree:true})
   }
 }
-function boot(){ensureButton();bind()}
+function boot(){
+  window.__aiFootballSoundEnabled=false;
+  patchNativeGoalSound();
+  ensureButton();
+  bind();
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
-window.AIFootballAudio={enableSound,disableSound,toggleSound,startTeamMusic,stopTeamMusic,speakGoal};
+window.AIFootballAudio={enableSound,disableSound,toggleSound,startTeamMusic,stopTeamMusic,speakGoal,get enabled(){return enabled}};
 })();
