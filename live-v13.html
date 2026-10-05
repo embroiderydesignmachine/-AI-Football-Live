@@ -17,7 +17,7 @@ html,body{margin:0;width:100%;height:100%;background:#09101d;overflow:hidden}ifr
 const frame=document.getElementById('gameFrame');
 const fresh=()=>Date.now().toString(36);
 function inject(doc,id,path){if(doc.getElementById(id))return;const s=doc.createElement('script');s.id=id;s.src=path+(path.includes('?')?'&':'?')+'cb='+fresh();doc.body.appendChild(s)}
-function attachHelpers(){try{const doc=frame.contentDocument;if(!doc||!doc.body)return;inject(doc,'adminPowerFix','./admin-power-fix.js');inject(doc,'stadiumAudioScript','./stadium-audio-clean.js');inject(doc,'instantSyncFix','./instant-sync.js')}catch(e){console.error('Yardımcı dosyalar yüklenemedi',e)}}
+function attachHelpers(){try{const doc=frame.contentDocument;if(!doc||!doc.body)return;inject(doc,'adminPowerFix','./admin-power-fix.js');inject(doc,'stadiumAudioScript','./stadium-audio-clean.js');inject(doc,'gameplayUiFix','./gameplay-ui-fix.js');inject(doc,'instantSyncFix','./instant-sync.js')}catch(e){console.error('Yardımcı dosyalar yüklenemedi',e)}}
 frame.addEventListener('load',attachHelpers);
 frame.src='./live.html?cb='+fresh();
 </script>
