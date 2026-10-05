@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
 let channel=null,ready=false,lastWakeAt=0,started=false;
+let originalProcessQueue=null,processTimer=null,applyingRemote=false,queueBroadcastTimer=null;
 const now=()=>Date.now();
 
 function canUse(){
@@ -40,14 +41,17 @@ function sendState(goalTeam=null){
 
 function applyQueues(p){
   if(!p||!canUse())return;
+  applyingRemote=true;
   state.A.queue=Math.max(0,Number(p.a)||0);
   state.B.queue=Math.max(0,Number(p.b)||0);
   render();
+  applyingRemote=false;
   if(typeof adminAuthed!=='undefined'&&adminAuthed&&typeof processQueue==='function'&&(state.A.queue>0||state.B.queue>0))processQueue();
 }
 
 function applyState(p){
   if(!p||!canUse())return;
+  applyingRemote=true;
   state.A.score=Number(p.scoreA)||0;
   state.B.score=Number(p.scoreB)||0;
   state.A.queue=Math.max(0,Number(p.queueA)||0);
@@ -55,9 +59,19 @@ function applyState(p){
   state.keeper.A=Number.isFinite(Number(p.keeperA))?Number(p.keeperA):state.keeper.A;
   state.keeper.B=Number.isFinite(Number(p.keeperB))?Number(p.keeperB):state.keeper.B;
   render();
+  applyingRemote=false;
   if(p.eventText&&typeof log==='function')log(p.eventText);
   if(p.goalTeam&&typeof celebrateGoal==='function')celebrateGoal(p.goalTeam);
   if(typeof adminAuthed!=='undefined'&&adminAuthed&&typeof processQueue==='function'&&(state.A.queue>0||state.B.queue>0))processQueue();
+}
+
+function scheduleProcessQueue(delay=180){
+  if(!originalProcessQueue)return;
+  if(processTimer)clearTimeout(processTimer);
+  processTimer=setTimeout(()=>{
+    processTimer=null;
+    originalProcessQueue();
+  },delay);
 }
 
 function installBroadcast(){
@@ -67,7 +81,7 @@ function installBroadcast(){
     .on('broadcast',{event:'queues'},({payload})=>applyQueues(payload))
     .on('broadcast',{event:'state'},({payload})=>applyState(payload))
     .on('broadcast',{event:'wake'},async()=>{
-      if(now()-lastWakeAt<150)return;
+      if(now()-lastWakeAt<120)return;
       lastWakeAt=now();
       await syncQueuesFromDb(false);
       if(typeof adminAuthed!=='undefined'&&adminAuthed&&typeof processQueue==='function')processQueue();
@@ -78,17 +92,37 @@ function installBroadcast(){
     });
 }
 
+function watchQueueUi(){
+  const qa=document.getElementById('queueA'),qb=document.getElementById('queueB');
+  if(!qa||!qb)return;
+  const changed=()=>{
+    if(applyingRemote||typeof adminAuthed==='undefined'||!adminAuthed)return;
+    if(queueBroadcastTimer)clearTimeout(queueBroadcastTimer);
+    queueBroadcastTimer=setTimeout(()=>{
+      queueBroadcastTimer=null;
+      send('queues',{a:Number(state.A.queue)||0,b:Number(state.B.queue)||0});
+    },35);
+  };
+  new MutationObserver(changed).observe(qa,{childList:true,characterData:true,subtree:true});
+  new MutationObserver(changed).observe(qb,{childList:true,characterData:true,subtree:true});
+}
+
 function patchFunctions(){
   if(started)return;
-  if(typeof addShots!=='function'||typeof resolveShot!=='function'||typeof addKeeper!=='function'){setTimeout(patchFunctions,120);return;}
+  if(typeof addShots!=='function'||typeof resolveShot!=='function'||typeof addKeeper!=='function'||typeof processQueue!=='function'){setTimeout(patchFunctions,120);return;}
   started=true;
+
+  originalProcessQueue=processQueue;
+  processQueue=function(){scheduleProcessQueue(180)};
 
   const oldAddShots=addShots;
   addShots=async function(t,n){
     const r=await oldAddShots.apply(this,arguments);
     await syncQueuesFromDb(true);
+    setTimeout(()=>syncQueuesFromDb(true),120);
+    setTimeout(()=>syncQueuesFromDb(true),300);
     send('wake',{});
-    if(typeof adminAuthed!=='undefined'&&adminAuthed&&typeof processQueue==='function')processQueue();
+    if(typeof adminAuthed!=='undefined'&&adminAuthed)processQueue();
     return r;
   };
 
@@ -104,12 +138,7 @@ function patchFunctions(){
   const oldAddKeeper=addKeeper;
   addKeeper=async function(t,n){
     const r=await oldAddKeeper.apply(this,arguments);
-    send('state',{
-      scoreA:Number(state.A.score)||0,scoreB:Number(state.B.score)||0,
-      queueA:Number(state.A.queue)||0,queueB:Number(state.B.queue)||0,
-      keeperA:Number(state.keeper.A)||0,keeperB:Number(state.keeper.B)||0,
-      eventText:(document.getElementById('event')?.textContent||'').trim(),goalTeam:null
-    });
+    sendState(null);
     return r;
   };
 
@@ -118,6 +147,8 @@ function patchFunctions(){
     resetMatch=async function(){const r=await oldReset.apply(this,arguments);sendState(null);return r;};
   }
 
+  watchQueueUi();
+
   const ev=document.getElementById('event');
   if(ev){
     let prev=ev.textContent;
@@ -125,7 +156,7 @@ function patchFunctions(){
       const cur=ev.textContent;
       if(cur===prev)return;
       prev=cur;
-      if(/Ayarlar kaydedildi/i.test(cur))setTimeout(()=>sendState(null),150);
+      if(/Ayarlar kaydedildi/i.test(cur))setTimeout(()=>sendState(null),100);
     }).observe(ev,{childList:true,characterData:true,subtree:true});
   }
 }
