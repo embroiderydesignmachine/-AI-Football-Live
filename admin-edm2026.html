@@ -11,13 +11,13 @@ html,body{margin:0;height:100%;background:#0b1020;color:#fff;font-family:system-
 <body>
 <div class="wrap"><div class="box">
 <h1>AI Football Live Admin</h1>
-<p>Supabase admin hesabınla giriş yap.</p>
+<p>Oyun için oluşturulan admin e-posta adresin ve şifrenle giriş yap. GitHub / Supabase panel girişi ayrıdır.</p>
+<section id="profile" hidden><p><strong>Hesabım</strong></p><p id="profileEmail" style="overflow-wrap:anywhere"></p><p>Yetki: Admin</p><a class="btn" href="./" style="display:block;box-sizing:border-box;text-align:center;text-decoration:none">Oyuna dön</a><button id="logoutBtn" class="btn" type="button" style="background:#a43c50">Çıkış yap</button></section>
 <form id="loginForm">
 <div class="field"><label for="email">E-posta</label><input id="email" type="email" autocomplete="username" required></div>
 <div class="field"><label for="password">Şifre</label><input id="password" type="password" autocomplete="current-password" required></div>
 <button id="loginBtn" class="btn" type="submit">Giriş yap</button>
-<div id="msg" class="msg"></div>
-</form>
+</form><p style="margin-top:16px"><a href="./" style="color:#8be0c5">Oyunu izle</a></p><div id="msg" class="msg" role="status" aria-live="polite"></div>
 </div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -27,8 +27,23 @@ const ADMIN_UID='6893f884-6b91-4224-abaa-43f87df0966f';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const form=document.getElementById('loginForm'),btn=document.getElementById('loginBtn'),msg=document.getElementById('msg');
 function show(text,ok=false){msg.textContent=text;msg.className='msg'+(ok?' ok':'')}
-async function finishIfAdmin(user){if(!user||user.id!==ADMIN_UID)return false;try{localStorage.setItem('aiFootballAdminDeviceV2','1');sessionStorage.setItem('aiFootballAdminDeviceV2','1')}catch(e){}show('Giriş başarılı. Oyun açılıyor…',true);setTimeout(()=>location.replace('./?v=7'),350);return true}
-(async()=>{const {data}=await db.auth.getUser();if(data&&data.user)await finishIfAdmin(data.user)})();
+async function finishIfAdmin(user){if(!user||user.id!==ADMIN_UID)return false;try{localStorage.setItem('aiFootballAdminDeviceV2','1');sessionStorage.setItem('aiFootballAdminDeviceV2','1')}catch(e){}show('Giriş başarılı. Oyun açılıyor…',true);setTimeout(()=>location.replace('./'),350);return true}
+function showProfile(user){
+ const isAdmin=!!(user&&user.id===ADMIN_UID);
+ form.hidden=isAdmin;
+ document.getElementById('profile').hidden=!isAdmin;
+ document.getElementById('profileEmail').textContent=isAdmin?(user.email||'Admin hesabı'):'';
+}
+(async()=>{try{const {data,error}=await db.auth.getUser();showProfile(data&&data.user);}catch(e){show('Oturum kontrol edilemedi. Tekrar deneyebilirsin.')}})();
+db.auth.onAuthStateChange((_event,session)=>showProfile(session&&session.user));
+document.getElementById('logoutBtn').addEventListener('click',async()=>{
+ const logout=document.getElementById('logoutBtn');logout.disabled=true;
+ try{
+  const {error}=await db.auth.signOut({scope:'local'});if(error)throw error;
+  try{localStorage.removeItem('aiFootballAdminDeviceV2');sessionStorage.removeItem('aiFootballAdminDeviceV2')}catch(e){}
+  showProfile(null);document.getElementById('password').value='';show('Bu tarayıcıdaki oturum kapatıldı.',true);
+ }catch(e){show('Çıkış yapılamadı. Tekrar dene.')}finally{logout.disabled=false}
+});
 form.addEventListener('submit',async e=>{e.preventDefault();btn.disabled=true;show('Giriş yapılıyor…');const email=document.getElementById('email').value.trim();const password=document.getElementById('password').value;const {data,error}=await db.auth.signInWithPassword({email,password});if(error){show('Giriş başarısız: e-posta veya şifreyi kontrol et.');btn.disabled=false;return}if(!data.user||data.user.id!==ADMIN_UID){await db.auth.signOut();show('Bu hesap admin olarak yetkili değil.');btn.disabled=false;return}await finishIfAdmin(data.user)});
 </script>
 </body>
