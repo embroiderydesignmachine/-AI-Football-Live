@@ -35,6 +35,7 @@ async function saveAdminSettings(ev){
     if(typeof db==='undefined'||typeof ids==='undefined'||!ids.game)throw new Error('Maç bağlantısı hazır değil');
 
     const start=readNumber('setStartKeeper',100,0);
+    const resetKeeper=start!==state.startKeeper;
     const cost=readNumber('setKeeperCost',10,0);
     const delay=readNumber('setShotDelay',3000,0);
     const threshold=readNumber('setShotThreshold',10,0);
@@ -44,12 +45,14 @@ async function saveAdminSettings(ev){
     if(gameRes.error)throw gameRes.error;
     if(!gameRes.data||!gameRes.data.length)throw new Error('Oyun ayarları güncellenmedi');
 
+    if(resetKeeper){
     const gkRes=await db.from('goalkeepers').update({initial_power:start}).eq('game_id',ids.game).select('id,initial_power');
     if(gkRes.error)throw gkRes.error;
 
     const stateRes=await db.from('goalkeeper_opponent_state').update({initial_power:start,power:start}).eq('game_id',ids.game).select('id,power,initial_power');
     if(stateRes.error)throw stateRes.error;
     if(!stateRes.data||stateRes.data.length<2)throw new Error('Kaleci güç kayıtları güncellenmedi');
+    }
 
     if(typeof gameRules!=='undefined')gameRules=rules;
     if(typeof state!=='undefined'){
@@ -57,8 +60,7 @@ async function saveAdminSettings(ev){
       state.keeperCost=cost;
       state.shotDelay=delay;
       state.shotThreshold=threshold;
-      state.keeper.A=start;
-      state.keeper.B=start;
+      if(resetKeeper){state.keeper.A=start;state.keeper.B=start;}
     }
     if(typeof render==='function')render();
     if(typeof loadRemote==='function')await loadRemote(true);
@@ -82,6 +84,13 @@ function install(){
   installed=true;
   installZeroSafeRules();
   btn.onclick=saveAdminSettings;
+  const costInput=byId('setKeeperCost');
+  if(costInput){
+    const note=document.createElement('small');
+    note.textContent='0 = kaleci gücü azalmaz. Örnek: 10 = her şutta 10 güç kaybı.';
+    note.style.cssText='display:block;color:#aab2c8;font-size:10px;margin-top:4px';
+    costInput.parentElement.appendChild(note);
+  }
   if(typeof loadRemote==='function')setTimeout(()=>loadRemote(true),50);
 }
 
