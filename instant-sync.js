@@ -3,8 +3,11 @@
 let channel=null,ready=false,started=false,lastWakeAt=0;
 let originalRender=null,originalProcessQueue=null,originalLoadRemote=null;
 let processTimer=null,syncing=false,processingHoldUntil=0;
+let isWorkerLeader=false,leaderId=null;
 const queueTruth={a:null,b:null};
 const now=()=>Date.now();
+const clientId=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():('c-'+Math.random().toString(36).slice(2)+'-'+Date.now().toString(36));
+const startedAt=Date.now();
 
 function canUse(){
   return typeof db!=='undefined'&&typeof ids!=='undefined'&&ids.game&&typeof state!=='undefined'&&typeof render==='function';
@@ -71,7 +74,7 @@ function sendState(goalTeam=null){
 function applyQueues(p){
   if(!p||!canUse())return;
   setQueues(p.a,p.b,false,Math.max(0,Number(p.holdMs)||0));
-  if(typeof adminAuthed!=='undefined'&&adminAuthed&&(queueTruth.a>0||queueTruth.b>0))processQueue();
+  if(isWorkerLeader&&(queueTruth.a>0||queueTruth.b>0))processQueue();
 }
 
 function applyState(p){
@@ -86,19 +89,57 @@ function applyState(p){
 }
 
 function scheduleProcessQueue(minDelay=650){
-  if(!originalProcessQueue)return;
+  if(!originalProcessQueue||!isWorkerLeader)return;
   if(processTimer)clearTimeout(processTimer);
   const wait=Math.max(minDelay,processingHoldUntil-now(),0);
   processTimer=setTimeout(()=>{
     processTimer=null;
-    originalProcessQueue();
+    if(isWorkerLeader)originalProcessQueue();
   },wait);
+}
+
+function presenceMembers(){
+  if(!channel)return[];
+  const raw=channel.presenceState?channel.presenceState():{};
+  const out=[];
+  for(const [key,items] of Object.entries(raw||{})){
+    for(const item of (Array.isArray(items)?items:[])){
+      out.push({
+        clientId:String(item.clientId||key),
+        admin:!!item.admin,
+        startedAt:Number(item.startedAt)||0
+      });
+    }
+  }
+  return out;
+}
+
+function electLeader(){
+  const admins=presenceMembers().filter(x=>x.admin);
+  admins.sort((a,b)=>(a.startedAt-b.startedAt)||a.clientId.localeCompare(b.clientId));
+  const next=admins.length?admins[0].clientId:null;
+  const wasLeader=isWorkerLeader;
+  leaderId=next;
+  isWorkerLeader=!!(typeof adminAuthed!=='undefined'&&adminAuthed&&leaderId===clientId);
+  if(!wasLeader&&isWorkerLeader&&(queueTruth.a>0||queueTruth.b>0))processQueue();
+}
+
+async function trackPresence(){
+  if(!ready||!channel)return;
+  try{
+    await channel.track({
+      clientId,
+      admin:!!(typeof adminAuthed!=='undefined'&&adminAuthed),
+      startedAt
+    });
+    electLeader();
+  }catch(e){console.warn('İşleyici seçimi güncellenemedi',e)}
 }
 
 function installBroadcast(){
   if(!canUse()){setTimeout(installBroadcast,120);return;}
   if(channel)return;
-  channel=db.channel('instant-ui-'+ids.game,{config:{broadcast:{self:false}}})
+  channel=db.channel('instant-ui-'+ids.game,{config:{broadcast:{self:false},presence:{key:clientId}}})
     .on('broadcast',{event:'queues'},({payload})=>applyQueues(payload))
     .on('broadcast',{event:'state'},({payload})=>applyState(payload))
     .on('broadcast',{event:'wake'},async({payload})=>{
@@ -107,11 +148,20 @@ function installBroadcast(){
       const holdMs=Math.max(0,Number(payload&&payload.holdMs)||0);
       if(holdMs)processingHoldUntil=Math.max(processingHoldUntil,now()+holdMs);
       await syncQueuesFromDb(false,holdMs);
-      if(typeof adminAuthed!=='undefined'&&adminAuthed&&(queueTruth.a>0||queueTruth.b>0))processQueue();
+      if(isWorkerLeader&&(queueTruth.a>0||queueTruth.b>0))processQueue();
     })
-    .subscribe(status=>{
+    .on('presence',{event:'sync'},electLeader)
+    .on('presence',{event:'join'},electLeader)
+    .on('presence',{event:'leave'},electLeader)
+    .subscribe(async status=>{
       ready=status==='SUBSCRIBED';
-      if(ready)syncQueuesFromDb(false);
+      if(ready){
+        await trackPresence();
+        await syncQueuesFromDb(false);
+        electLeader();
+      }else{
+        isWorkerLeader=false;
+      }
     });
 }
 
@@ -141,7 +191,7 @@ function patchFunctions(){
     const r=await oldAddShots.apply(this,arguments);
     await syncQueuesFromDb(true,700);
     send('wake',{holdMs:700});
-    if(typeof adminAuthed!=='undefined'&&adminAuthed)processQueue();
+    if(isWorkerLeader)processQueue();
     return r;
   };
 
@@ -182,6 +232,10 @@ function patchFunctions(){
     }).observe(ev,{childList:true,characterData:true,subtree:true});
   }
 
+  if(typeof db!=='undefined'&&db.auth&&db.auth.onAuthStateChange){
+    db.auth.onAuthStateChange(()=>setTimeout(trackPresence,0));
+  }
+  window.addEventListener('beforeunload',()=>{try{if(channel)channel.untrack()}catch(e){}});
   syncQueuesFromDb(false);
 }
 
