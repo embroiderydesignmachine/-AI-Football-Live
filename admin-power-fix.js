@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const byId=id=>document.getElementById(id);
-let installed=false;
+let installed=false,startDirty=false;
 
 function readNumber(id,fallback,min=0){
   const el=byId(id);
@@ -35,7 +35,7 @@ async function saveAdminSettings(ev){
     if(typeof db==='undefined'||typeof ids==='undefined'||!ids.game)throw new Error('Maç bağlantısı hazır değil');
 
     const start=readNumber('setStartKeeper',100,0);
-    const resetKeeper=start!==state.startKeeper;
+    const resetKeeper=startDirty||start!==state.startKeeper;
     const cost=readNumber('setKeeperCost',10,0);
     const delay=readNumber('setShotDelay',3000,0);
     const threshold=readNumber('setShotThreshold',10,0);
@@ -46,12 +46,12 @@ async function saveAdminSettings(ev){
     if(!gameRes.data||!gameRes.data.length)throw new Error('Oyun ayarları güncellenmedi');
 
     if(resetKeeper){
-    const gkRes=await db.from('goalkeepers').update({initial_power:start}).eq('game_id',ids.game).select('id,initial_power');
-    if(gkRes.error)throw gkRes.error;
+      const gkRes=await db.from('goalkeepers').update({initial_power:start}).eq('game_id',ids.game).select('id,initial_power');
+      if(gkRes.error)throw gkRes.error;
 
-    const stateRes=await db.from('goalkeeper_opponent_state').update({initial_power:start,power:start}).eq('game_id',ids.game).select('id,power,initial_power');
-    if(stateRes.error)throw stateRes.error;
-    if(!stateRes.data||stateRes.data.length<2)throw new Error('Kaleci güç kayıtları güncellenmedi');
+      const stateRes=await db.from('goalkeeper_opponent_state').update({initial_power:start,power:start}).eq('game_id',ids.game).select('id,power,initial_power');
+      if(stateRes.error)throw stateRes.error;
+      if(!stateRes.data||stateRes.data.length<2)throw new Error('Kaleci güç kayıtları güncellenmedi');
     }
 
     if(typeof gameRules!=='undefined')gameRules=rules;
@@ -62,6 +62,7 @@ async function saveAdminSettings(ev){
       state.shotThreshold=threshold;
       if(resetKeeper){state.keeper.A=start;state.keeper.B=start;}
     }
+    startDirty=false;
     if(typeof render==='function')render();
     if(typeof loadRemote==='function')await loadRemote(true);
     if(typeof log==='function')log('Ayarlar kaydedildi');
@@ -84,6 +85,8 @@ function install(){
   installed=true;
   installZeroSafeRules();
   btn.onclick=saveAdminSettings;
+  const startInput=byId('setStartKeeper');
+  if(startInput)startInput.addEventListener('input',()=>{startDirty=true});
   const costInput=byId('setKeeperCost');
   if(costInput){
     const note=document.createElement('small');
