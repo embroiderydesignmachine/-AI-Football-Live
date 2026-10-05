@@ -9,11 +9,11 @@ html,body{margin:0;width:100%;height:100%;background:#09101d;overflow:hidden}ifr
 </style>
 </head>
 <body>
-<iframe id="gameFrame" src="./live.html?v=12" allow="autoplay"></iframe>
+<iframe id="gameFrame" src="./live.html?v=17" allow="autoplay"></iframe>
 <script>
 const frame=document.getElementById('gameFrame');
 function inject(doc,id,src){if(doc.getElementById(id))return;const s=doc.createElement('script');s.id=id;s.src=src;doc.body.appendChild(s)}
-function attachHelpers(){try{const doc=frame.contentDocument;if(!doc||!doc.body)return;inject(doc,'adminPowerFix','./admin-power-fix.js?v=3');inject(doc,'stadiumAudioScript','./stadium-audio-clean.js?v=2')}catch(e){console.error('Yardımcı dosyalar yüklenemedi',e)}}
+function attachHelpers(){try{const doc=frame.contentDocument;if(!doc||!doc.body)return;inject(doc,'adminPowerFix','./admin-power-fix.js?v=4');inject(doc,'stadiumAudioScript','./stadium-audio-clean.js?v=2')}catch(e){console.error('Yardımcı dosyalar yüklenemedi',e)}}
 frame.addEventListener('load',attachHelpers);
 </script>
 </body>

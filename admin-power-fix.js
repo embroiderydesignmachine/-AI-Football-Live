@@ -20,7 +20,6 @@ function installZeroSafeRules(){
     state.keeperCost=Number.isFinite(Number(gameRules.keeper_cost))?Number(gameRules.keeper_cost):10;
     state.shotDelay=Number.isFinite(Number(gameRules.shot_delay))?Number(gameRules.shot_delay):3000;
     state.shotThreshold=Number.isFinite(Number(gameRules.shot_threshold))?Number(gameRules.shot_threshold):10;
-    state.lastTeam=gameRules.last_team||state.lastTeam;
     if(typeof render==='function')render();
   };
 }
